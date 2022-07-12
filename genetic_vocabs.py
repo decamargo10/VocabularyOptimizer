@@ -1,5 +1,6 @@
 import copy
 import glob
+import pickle
 import random
 import subprocess
 
@@ -12,6 +13,7 @@ mutation_prob = 0.01
 termination_accuracy = 95.0
 max_generations = 10000
 all_results = {}
+save_path = "./genetic_save.pkl"
 
 class Param:
     def __init__(self, name, minValue, maxValue):
@@ -55,7 +57,7 @@ class Individual:
             for i in range(current_bit, current_bit + p.numberOfBits):
                 bit_string += str(self.chromosome.chromosome[i])
             current_bit += p.numberOfBits
-            decoded_dict[p.name] = (int(bit_string, 2))
+            decoded_dict[p.name] = (int(bit_string, 2)) + p.minValue
         return decoded_dict
 
     def is_chromosome_valid(self):
@@ -65,7 +67,7 @@ class Individual:
             for i in range(current_bit, current_bit + p.numberOfBits):
                 bit_string += str(self.chromosome.chromosome[i])
             current_bit += p.numberOfBits
-            if int(bit_string, 2) > p.maxValue:
+            if int(bit_string, 2) > p.maxValue-p.minValue:
                 return False
         return True
 
@@ -80,7 +82,7 @@ class Individual:
         for k in param_dict:
            params += " " + "-" + k + " " + str(param_dict[k])
         cmd = fbow_util_path + " " + feature_path + " ./" + name + params
-        #subprocess.run(cmd)
+        subprocess.run(cmd, shell=True)
         return "./" + name
 
 
@@ -106,7 +108,7 @@ class Generation:
             if bin_string not in all_results:
                 # create voc return path to voc
                 voc = i.create_voc(name, decoded_dict)
-                fitness, res_dict = ev(bin_string)
+                fitness, res_dict = evaluate(voc, decoded_dict["norm"], decoded_dict["weight"])
                 i.fitness = fitness
                 all_results[bin_string] = i.fitness
                 i.result_dict = res_dict
@@ -159,7 +161,7 @@ class Population:
             f += k.fitness
 
         for m in range(len(curr_gen.population)):
-            w = random.randint(0, f)
+            w = random.randint(0, f.__int__())
             d = 0.0
             for i in curr_gen.population:
                 d += i.fitness
@@ -174,8 +176,13 @@ class Population:
             m = self.mutation(o)
             new_population.append(m)
         new_generation = Generation(new_population, curr_gen.chromosome_length)
+        print("Generation " + str(self.current_generation))
+        print("Highest individual fitness: " + str(self.highest_individual_fitness))
+        print("Avg. generation fitness: " + str(self.generations[self.current_generation].population_fitness))
         self.generations.append(new_generation)
         self.current_generation += 1
+        self.save()
+
 
     def generate_offsprings(self, parents):
         new_population = []
@@ -229,7 +236,15 @@ class Population:
         for v in vocs:
             if not v == fittest_voc_name:
                 cmd = "rm " + v
-                subprocess.run(cmd)
+                subprocess.run(cmd, shell=True)
+
+    def save(self):
+        print("--------------------")
+        print("SAVING")
+        with open(save_path, 'wb') as handle:
+            pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        print("DONE SAVING")
+        print("--------------------")
 
 
 # when new generation has been build:
@@ -242,11 +257,13 @@ class Population:
 
 if __name__ == '__main__':
     # we get a freshly generated voc and evaluate it here
-    k = Param("k", 1, 12)
+    #with open(save_path, 'rb') as handle:
+    #    b = pickle.load(handle)
+    k = Param("k", 2, 12)
     l = Param("l", 1, 7)
-    weight = Param("weight", 1, 4)
-    norm = Param("norm", 1, 3)
-    distance = Param("distance", 1, 2)
+    weight = Param("weight", 0, 3)
+    norm = Param("norm", 0, 2)
+    distance = Param("distance", 0, 1)
     params.append(k)
     params.append(l)
     params.append(weight)
@@ -256,14 +273,7 @@ if __name__ == '__main__':
     for p in params:
         chromosome_length += p.numberOfBits
     ind = Individual(chromosome_length, False)
-    ind.decode_chromosome()
-    pop = Population(30, chromosome_length)
+    pop = Population(20, chromosome_length)
     while not pop.termination_condition_fulfilled():
-        for p in pop.generations[pop.current_generation].population:
-            print(p.get_one_string())
-        print("______________________")
         pop.evaluate_curr_gen()
         pop.create_new_gen()
-    for p in pop.generations[pop.current_generation].population:
-        print(p.get_one_string())
-    print("test")
