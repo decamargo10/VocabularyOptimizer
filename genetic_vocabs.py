@@ -8,10 +8,10 @@ from evaluation import evaluate, ev
 fbow_util_path = "/home/decamargo/Documents/FBoW/build/utils/fbow_create_vocabulary"
 feature_path = "/home/decamargo/Documents/output_features"
 params = []
-crossover_prob = 0.01
+crossover_prob = 0.80
 mutation_prob = 0.01
-termination_accuracy = 95.0
-max_generations = 10000
+termination_accuracy = 0.9
+max_generations = 500
 all_results = {}
 save_path = "./genetic_save.pkl"
 
@@ -194,23 +194,38 @@ class Population:
 
     def generate_offspring(self, parent1, parent2):
         chrom_length = len(parent1.chromosome.chromosome)
-        child1_chrom = []
-        child2_chrom = []
+        ret1_valid = False
+        ret2_valid = False
         if random.uniform(0.0, 1.0) <= crossover_prob:
-            for i in range(int(chrom_length / 2)):
-                child1_chrom.append(parent1.chromosome.chromosome[i])
-                child2_chrom.append(parent2.chromosome.chromosome[i])
-            for b in range(int(chrom_length / 2), chrom_length):
-                child1_chrom.append(parent1.chromosome.chromosome[i])
-                child2_chrom.append(parent2.chromosome.chromosome[i])
-            child1 = Individual(child1_chrom, True)
-            child2 = Individual(child2_chrom, True)
-            if not child1.is_chromosome_valid():
+            for j in range (2, (int)(chrom_length/2)+1):
+                child1_chrom = []
+                child2_chrom = []
+                for i in range((int)(chrom_length/j)):
+                    child1_chrom.append(parent1.chromosome.chromosome[i])
+                    child2_chrom.append(parent2.chromosome.chromosome[i])
+                for b in range((int)(chrom_length/j), chrom_length):
+                    child1_chrom.append(parent1.chromosome.chromosome[b])
+                    child2_chrom.append(parent2.chromosome.chromosome[b])
+                child1 = Individual(child1_chrom, True)
+                child2 = Individual(child2_chrom, True)
+                if child1.is_chromosome_valid():
+                    ret1_valid = True
+                    ret1 = copy.deepcopy(child1)
+                if child2.is_chromosome_valid():
+                    ret2_valid = True
+                    ret2 = copy.deepcopy(child2)
+            if ret1_valid:
+                child1 = ret1
+            else:
                 child1 = parent1
                 print("c1 offspring failed")
-            if not child2.is_chromosome_valid():
+
+            if ret2_valid:
+                child2 = ret2
+            else:
                 child2 = parent2
                 print("c2 offspring failed")
+
             return child1, child2
         else:
             return parent1, parent2
@@ -259,7 +274,7 @@ if __name__ == '__main__':
     # we get a freshly generated voc and evaluate it here
     #with open(save_path, 'rb') as handle:
     #    b = pickle.load(handle)
-    k = Param("k", 2, 12)
+    k = Param("k", 2, 14)
     l = Param("l", 1, 7)
     weight = Param("weight", 0, 3)
     norm = Param("norm", 0, 2)
@@ -273,7 +288,7 @@ if __name__ == '__main__':
     for p in params:
         chromosome_length += p.numberOfBits
     ind = Individual(chromosome_length, False)
-    pop = Population(20, chromosome_length)
+    pop = Population(100, chromosome_length)
     while not pop.termination_condition_fulfilled():
         pop.evaluate_curr_gen()
         pop.create_new_gen()
