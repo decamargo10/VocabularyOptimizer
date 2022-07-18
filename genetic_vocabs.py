@@ -3,16 +3,18 @@ import glob
 import pickle
 import random
 import subprocess
+import matplotlib.pyplot as plt
 
 from evaluation import evaluate, ev
 fbow_util_path = "/home/decamargo/Documents/FBoW/build/utils/fbow_create_vocabulary"
 feature_path = "/home/decamargo/Documents/output_features"
 params = []
-crossover_prob = 0.80
-mutation_prob = 0.01
+crossover_prob = 0.78
+mutation_prob = 0.08
 termination_accuracy = 0.9
-max_generations = 500
+max_generations = 100
 all_results = {}
+chromosome_length = 0
 save_path = "./genetic_save.pkl"
 
 class Param:
@@ -158,13 +160,13 @@ class Population:
         parents = []
         f = 0
         for k in curr_gen.population:
-            f += k.fitness
+            f += k.fitness * k.fitness
 
         for m in range(len(curr_gen.population)):
-            w = random.randint(0, f.__int__())
+            w = random.uniform(0.0, f)
             d = 0.0
             for i in curr_gen.population:
-                d += i.fitness
+                d += i.fitness * i.fitness
                 if d >= w:
                     # parent found
                     parents.append(i)
@@ -197,21 +199,30 @@ class Population:
         ret1_valid = False
         ret2_valid = False
         if random.uniform(0.0, 1.0) <= crossover_prob:
-            for j in range (2, (int)(chrom_length/2)+1):
-                child1_chrom = []
-                child2_chrom = []
-                for i in range((int)(chrom_length/j)):
-                    child1_chrom.append(parent1.chromosome.chromosome[i])
-                    child2_chrom.append(parent2.chromosome.chromosome[i])
-                for b in range((int)(chrom_length/j), chrom_length):
-                    child1_chrom.append(parent1.chromosome.chromosome[b])
-                    child2_chrom.append(parent2.chromosome.chromosome[b])
-                child1 = Individual(child1_chrom, True)
-                child2 = Individual(child2_chrom, True)
-                if child1.is_chromosome_valid():
+            for j in range (chrom_length):
+                ran = random.randint(1,chrom_length-2)
+                if not ret1_valid:
+                    child1_chrom = []
+                if not ret2_valid:
+                    child2_chrom = []
+                for i in range(ran):
+                    if not ret1_valid:
+                        child1_chrom.append(parent1.chromosome.chromosome[i])
+                    if not ret2_valid:
+                        child2_chrom.append(parent2.chromosome.chromosome[i])
+                for b in range(ran, chrom_length):
+                    if not ret1_valid:
+                        child1_chrom.append(parent1.chromosome.chromosome[b])
+                    if not ret2_valid:
+                        child2_chrom.append(parent2.chromosome.chromosome[b])
+                if not ret1_valid:
+                    child1 = Individual(child1_chrom, True)
+                if not ret2_valid:
+                    child2 = Individual(child2_chrom, True)
+                if not ret1_valid and child1.is_chromosome_valid():
                     ret1_valid = True
                     ret1 = copy.deepcopy(child1)
-                if child2.is_chromosome_valid():
+                if not ret2_valid and child2.is_chromosome_valid():
                     ret2_valid = True
                     ret2 = copy.deepcopy(child2)
             if ret1_valid:
@@ -270,6 +281,39 @@ class Population:
 # 5. check if term criteria reached.
 # 6. create new generation
 
+def run_genetic_agorithm(population_size):
+    global chromosome_length
+    for p in params:
+        chromosome_length += p.numberOfBits
+    pop = Population(population_size, chromosome_length)
+    while not pop.termination_condition_fulfilled():
+        pop.evaluate_curr_gen()
+        pop.create_new_gen()
+
+
+def plot_results(pkl_path):
+    with open(save_path, 'rb') as handle:
+        b = pickle.load(handle)
+    pop_fitness = []
+    for gen in b.generations:
+        pop_fitness.append(gen.population_fitness)
+    plt.plot(pop_fitness)
+    plt.xlabel("Generation")
+    plt.ylabel("Avg. fitness")
+    plt.show()
+    ind_fitness = []
+    highest_score = 0.0
+    for gen in b.generations:
+        for ind in gen.population:
+            if ind.fitness > highest_score:
+                highest_score = ind.fitness
+        ind_fitness.append(highest_score)
+    plt.plot(ind_fitness)
+    plt.xlabel("Generation")
+    plt.ylabel("Highest individual fitness")
+    plt.show()
+
+
 if __name__ == '__main__':
     # we get a freshly generated voc and evaluate it here
     #with open(save_path, 'rb') as handle:
@@ -284,11 +328,7 @@ if __name__ == '__main__':
     params.append(weight)
     params.append(norm)
     params.append(distance)
-    chromosome_length = 0
-    for p in params:
-        chromosome_length += p.numberOfBits
-    ind = Individual(chromosome_length, False)
-    pop = Population(100, chromosome_length)
-    while not pop.termination_condition_fulfilled():
-        pop.evaluate_curr_gen()
-        pop.create_new_gen()
+    population_size = 10
+    run_genetic_agorithm(population_size)
+    #plot_results(save_path)
+
