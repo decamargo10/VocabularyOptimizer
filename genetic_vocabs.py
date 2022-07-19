@@ -12,7 +12,7 @@ params = []
 crossover_prob = 0.78
 mutation_prob = 0.08
 termination_accuracy = 0.9
-max_generations = 100
+max_generations = 50
 all_results = {}
 chromosome_length = 0
 save_path = "./genetic_save.pkl"
@@ -295,7 +295,11 @@ def plot_results(pkl_path):
     with open(save_path, 'rb') as handle:
         b = pickle.load(handle)
     pop_fitness = []
+    i=0
     for gen in b.generations:
+        i += 1
+        if i > 51:
+            break
         pop_fitness.append(gen.population_fitness)
     plt.plot(pop_fitness)
     plt.xlabel("Generation")
@@ -303,7 +307,11 @@ def plot_results(pkl_path):
     plt.show()
     ind_fitness = []
     highest_score = 0.0
+    i = 0
     for gen in b.generations:
+        i += 1
+        if i>51:
+            break
         for ind in gen.population:
             if ind.fitness > highest_score:
                 highest_score = ind.fitness
@@ -330,5 +338,5 @@ if __name__ == '__main__':
     params.append(distance)
     population_size = 10
     run_genetic_agorithm(population_size)
-    #plot_results(save_path)
+    plot_results(save_path)
 
