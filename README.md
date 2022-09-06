@@ -4,7 +4,7 @@ Tool to optimize parameters which are used when creating visual vocabularies and
 ## Installation [WIP]
 
 To use the VocabularyOptimizer you need a BoW-Library. The recommended (and adapted FBoW-Version can be found [here](https://github.com/decamargo10/FBoW/tree/changes_for_ba)).
-When compiling FBoW pybind is used to create a Python module which has to get imported by the Vocabulary Optimizer.
+When compiling FBoW, pybind is used to create a Python module which has to get imported by the Vocabulary Optimizer.
 
 
 ## Usage [WIP]
